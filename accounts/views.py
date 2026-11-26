@@ -1,16 +1,17 @@
 from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count
+from django.db.models import Avg, Count
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
 from appointments.models import Appointment
 from cases.models import Case
+from payroll.models import DoctorRating
 from notifications.models import Notification
 from .access import RoleRequiredMixin
-from .forms import AccountProfileForm, PatientProfileForm
+from .forms import AccountProfileForm, AdminAccountCreationForm, PatientProfileForm
 from .models import DoctorProfile, PatientProfile, User
 
 
@@ -46,6 +47,8 @@ class DashboardView(LoginRequiredMixin, View):
                 "cases": cases, "appointments": Appointment.objects.filter(doctor=user).exclude(
                     status__in=[Appointment.Status.REJECTED, Appointment.Status.COMPLETED]),
                 "statuses": Case.Status.choices, "priorities": Case.Priority.choices,
+                "average_rating": DoctorRating.objects.filter(doctor=user).aggregate(value=Avg("score"))["value"],
+                "rating_count": DoctorRating.objects.filter(doctor=user).count(),
             })
         return render(request, "accounts/dashboard_patient.html", {
             "cases": Case.objects.filter(patient=user),
@@ -112,9 +115,13 @@ class DoctorCreateView(RoleRequiredMixin, View):
         if UserModel.objects.filter(username=data["username"]).exists():
             messages.error(request, "That username is already in use.")
             return render(request, self.template_name)
+        email = data["email"].strip().lower()
+        if UserModel.objects.filter(email__iexact=email).exists():
+            messages.error(request, "An account already uses that email address.")
+            return render(request, self.template_name)
         with transaction.atomic():
             doctor = UserModel.objects.create_user(
-                username=data["username"], email=data["email"], password=data["password"],
+                username=data["username"], email=email, password=data["password"],
                 first_name=data["first_name"], last_name=data["last_name"],
                 phone=data.get("phone", ""), role=User.Role.DOCTOR,
             )
@@ -123,3 +130,26 @@ class DoctorCreateView(RoleRequiredMixin, View):
                                           availability=data.get("availability", ""))
         messages.success(request, "Doctor account created.")
         return redirect("dashboard")
+
+
+class AdminCreateView(LoginRequiredMixin, View):
+    template_name = "accounts/admin_create.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if not request.user.is_superuser:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": AdminAccountCreationForm()})
+
+    def post(self, request):
+        form = AdminAccountCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Admin account created. Share its credentials securely.")
+            return redirect("dashboard")
+        return render(request, self.template_name, {"form": form})

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.get_full_name|default:employee.username }} · Team{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div><span class="welcome-tag">EMPLOYEE WORKSPACE</span><h1>{{ employee.get_full_name|default:employee.username }}</h1><p class="text-secondary">{{ employee.get_role_display }}{% if employee.email %} · {{ employee.email }}{% endif %}</p></div>
+  <a class="btn btn-primary" href="{% url 'staff_chat' employee.pk %}"><i class="bi bi-chat-dots me-1"></i>Open staff chat</a>
+</div>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <section class="panel p-4 mb-4">
+      <h2 class="h5">Add a manager remark</h2>
+      <p class="small text-secondary">Remarks are attributed to you and remain visible to the employee and authorized managers.</p>
+      <form method="post" action="{% url 'employee_remark_create' employee.pk %}">{% csrf_token %}
+        <label class="form-label" for="{{ remark_form.body.id_for_label }}">Remark</label>{{ remark_form.body }}
+        <button class="btn btn-primary mt-3">Save remark</button>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><span class="section-kicker">FEEDBACK HISTORY</span><h2 class="h5 mb-0">Manager remarks</h2></div></div>
+      {% for remark in remarks %}
+        <div class="visit-card"><p class="mb-2">{{ remark.body|linebreaksbr }}</p><span class="small text-secondary">{{ remark.author|default:"Former manager" }} · {{ remark.created_at|date:"M j, Y · g:i A" }}</span></div>
+      {% empty %}<p class="empty-state">No remarks yet.</p>{% endfor %}
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel">
+      <div class="panel-heading"><div><span class="section-kicker">SCHEDULE</span><h2 class="h5 mb-0">Meetings with this employee</h2></div></div>
+      {% for meeting in meetings %}
+        <div class="appointment-row"><div class="row-main"><strong>{{ meeting.title }}</strong><div class="small text-secondary">{{ meeting.scheduled_at|date:"D, M j · g:i A" }}</div><span class="badge {% if meeting.tag == 'URGENT' %}text-bg-danger{% elif meeting.tag == 'IMPORTANT' %}text-bg-warning{% else %}text-bg-light{% endif %}">{{ meeting.get_tag_display }}</span><div class="small mt-1">{{ meeting.get_status_display }}</div>{% if meeting.details %}<div class="small text-secondary mt-1">{{ meeting.details }}</div>{% endif %}</div></div>
+      {% empty %}<p class="empty-state">No meetings scheduled with this employee.</p>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endblock %}

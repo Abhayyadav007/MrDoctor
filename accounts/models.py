@@ -1,11 +1,18 @@
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 
 class UserManager(DjangoUserManager):
     use_in_migrations = True
 
     def create_superuser(self, username, email=None, password=None, **extra_fields):
+        expected_email = settings.SUPERADMIN_EMAIL.lower()
+        if not email or email.lower() != expected_email:
+            raise ValueError(f"The only superuser must use {settings.SUPERADMIN_EMAIL}.")
+        if self.get_queryset().filter(is_superuser=True).exists():
+            raise ValueError("A superuser already exists.")
         extra_fields.setdefault("role", "ADMIN")
         return super().create_superuser(username, email, password, **extra_fields)
 
@@ -20,6 +27,21 @@ class User(AbstractUser):
     phone = models.CharField(max_length=30, blank=True)
     profile_photo = models.ImageField(upload_to="profiles/", blank=True, null=True)
     objects = UserManager()
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                fields=("is_superuser",),
+                condition=Q(is_superuser=True),
+                name="accounts_only_one_superuser",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.is_superuser and self.email.lower() != settings.SUPERADMIN_EMAIL.lower():
+            from django.core.exceptions import ValidationError
+            raise ValidationError({"email": f"The only superuser email is {settings.SUPERADMIN_EMAIL}."})
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_role_display()})"

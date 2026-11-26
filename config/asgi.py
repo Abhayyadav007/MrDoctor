@@ -8,8 +8,11 @@ from django.core.asgi import get_asgi_application
 
 django_asgi_app = get_asgi_application()
 from chat.routing import websocket_urlpatterns
+from workplace.routing import websocket_urlpatterns as workplace_websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(websocket_urlpatterns))),
+    "websocket": AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(
+        [*websocket_urlpatterns, *workplace_websocket_urlpatterns],
+    ))),
 })

@@ -13,9 +13,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         admin, _ = User.objects.get_or_create(username="demo-admin", defaults={
             "email": "admin@example.test", "first_name": "Demo", "last_name": "Admin",
-            "role": User.Role.ADMIN, "is_staff": True, "is_superuser": True,
+            "role": User.Role.ADMIN, "is_staff": False, "is_superuser": False,
         })
-        admin.role, admin.is_staff, admin.is_superuser = User.Role.ADMIN, True, True
+        admin.role, admin.is_staff, admin.is_superuser = User.Role.ADMIN, False, False
         admin.set_password("DemoAdmin123!")
         admin.save()
         EmailAddress.objects.update_or_create(user=admin, email=admin.email,

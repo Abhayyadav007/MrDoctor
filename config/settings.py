@@ -26,6 +26,8 @@ INSTALLED_APPS = [
     "chat",
     "calls",
     "notifications",
+    "payroll",
+    "workplace",
 ]
 
 MIDDLEWARE = [
@@ -69,6 +71,8 @@ else:
         "PORT": config("DATABASE_PORT", default="5432"),
     }}
 AUTH_USER_MODEL = "accounts.User"
+SUPERADMIN_EMAIL = config("SUPERADMIN_EMAIL", default="abhaykumar@example.test").lower()
+ACCOUNT_FORMS = {"login": "accounts.forms.RoleAwareLoginForm"}
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
@@ -81,8 +85,10 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
+        "EMAIL_AUTHENTICATION": True,
         "APPS": [{
             "client_id": config("GOOGLE_CLIENT_ID", default=""),
             "secret": config("GOOGLE_CLIENT_SECRET", default=""),

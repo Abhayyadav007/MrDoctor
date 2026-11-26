@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Team management{% endblock %}
+{% block content %}
+<section class="page-heading mb-4">
+  <div><span class="welcome-tag">STAFF MANAGEMENT</span><h1>{% if user.is_superuser %}Manage your admin and clinical teams{% else %}Your clinical team{% endif %}</h1>
+    <p>{% if user.is_superuser %}Review administrators and doctors, leave remarks, start staff conversations, and schedule meetings.{% else %}Support your doctors with clear feedback, direct conversations, and well-organized meetings.{% endif %}</p>
+  </div>
+</section>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <section class="panel">
+      <div class="panel-heading"><div><span class="section-kicker">YOUR REPORTS</span><h2 class="h5 mb-0">Employees</h2></div></div>
+      {% for employee in employees %}
+        <div class="list-row">
+          <div class="case-symbol"><i class="bi {% if employee.role == 'DOCTOR' %}bi-heart-pulse{% else %}bi-person-badge{% endif %}"></i></div>
+          <div class="row-main"><strong>{{ employee.get_full_name|default:employee.username }}</strong>
+            <div class="small text-secondary">{{ employee.get_role_display }}{% if employee.email %} · {{ employee.email }}{% endif %}</div>
+            <div class="small text-secondary">{{ employee.remark_count }} remark{{ employee.remark_count|pluralize }}</div>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'employee_workspace' employee.pk %}"><i class="bi bi-journal-text"></i> Remarks</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'staff_chat' employee.pk %}"><i class="bi bi-chat-dots"></i> Chat</a>
+          </div>
+        </div>
+      {% empty %}<p class="empty-state">No employees in your management scope.</p>{% endfor %}
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="panel p-4 mb-4">
+      <h2 class="h5">Schedule a staff meeting</h2>
+      <p class="small text-secondary">Choose attendees and a priority tag. Attendees will see the meeting in their team workspace.</p>
+      <form method="post" action="{% url 'staff_meeting_create' %}">{% csrf_token %}
+        {% for field in meeting_form %}
+          <div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="small text-danger">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button class="btn btn-primary w-100"><i class="bi bi-calendar2-plus me-1"></i>Schedule meeting</button>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><span class="section-kicker">UPCOMING</span><h2 class="h5 mb-0">Staff meetings</h2></div></div>
+      {% for meeting in meetings %}
+        <div class="appointment-row">
+          <div class="row-main"><strong>{{ meeting.title }}</strong>
+            <div class="small text-secondary">{{ meeting.scheduled_at|date:"D, M j · g:i A" }}</div>
+            <span class="badge {% if meeting.tag == 'URGENT' %}text-bg-danger{% elif meeting.tag == 'IMPORTANT' %}text-bg-warning{% else %}text-bg-light{% endif %}">{{ meeting.get_tag_display }}</span>
+            <div class="small text-secondary mt-1">With {% for attendee in meeting.attendees.all %}{% if not attendee.pk == user.pk %}{{ attendee.get_full_name|default:attendee.username }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}</div>
+          </div>
+          {% if meeting.organizer_id == user.pk %}<form method="post" action="{% url 'staff_meeting_cancel' meeting.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Cancel</button></form>{% endif %}
+        </div>
+      {% empty %}<p class="empty-state">No upcoming meetings.</p>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endblock %}

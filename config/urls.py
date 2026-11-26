@@ -13,6 +13,8 @@ urlpatterns = [
     path("appointments/", include("appointments.urls")),
     path("chat/", include("chat.urls")),
     path("notifications/", include("notifications.urls")),
+    path("payroll/", include("payroll.urls")),
+    path("management/", include("workplace.urls")),
 ]
 if settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()

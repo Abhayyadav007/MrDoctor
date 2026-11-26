@@ -15,6 +15,8 @@ from accounts.models import User
 from notifications.models import Notification
 from .forms import AttachmentForm, CaseAssignmentForm, CaseForm, VisitForm
 from .models import Attachment, Case, CaseAudit, Visit
+from payroll.forms import DoctorRatingForm
+from payroll.models import DoctorRating
 
 
 class CaseListView(LoginRequiredMixin, ListView):
@@ -72,13 +74,22 @@ class CaseCreateView(LoginRequiredMixin, View):
 class CaseDetailView(LoginRequiredMixin, View):
     def get(self, request, pk):
         case = case_for_user(request.user, pk)
+        existing_rating = DoctorRating.objects.filter(case=case).first() if request.user.role == User.Role.PATIENT else None
         can_treat = request.user.role in (User.Role.DOCTOR, User.Role.ADMIN) and (
             request.user.is_superuser or request.user.role == User.Role.ADMIN or case.doctor_id == request.user.id)
+        can_rate = (
+            request.user.role == User.Role.PATIENT
+            and case.status in (Case.Status.RECOVERED, Case.Status.CLOSED)
+            and case.doctor_id is not None
+            and existing_rating is None
+        )
         return render(request, "cases/case_detail.html", {
             "case": case, "can_treat": can_treat,
             "visit_form": VisitForm(), "attachment_form": AttachmentForm(),
             "assignment_form": CaseAssignmentForm(instance=case)
             if request.user.role == User.Role.ADMIN or request.user.is_superuser else None,
+            "can_rate": can_rate, "rating_form": DoctorRatingForm() if can_rate else None,
+            "existing_rating": existing_rating,
         })
 
 

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Chat with {{ peer.get_full_name|default:peer.username }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><span class="welcome-tag">STAFF CONVERSATION</span><h1 class="h3 mb-0">{{ peer.get_full_name|default:peer.username }}</h1><span class="small text-secondary">{{ peer.get_role_display }}</span></div><a class="btn btn-outline-secondary" href="{% url 'staff_chat_list' %}"><i class="bi bi-arrow-left me-1"></i>All chats</a></div>
+<section class="panel p-3 p-md-4">
+  <div id="staff-chat-log" class="staff-chat-log" data-user-id="{{ user.pk }}" data-ws-url="{% if request.is_secure %}wss{% else %}ws{% endif %}://{{ request.get_host }}/ws/management/messages/{{ peer.pk }}/" aria-live="polite">
+    {% for item in chat_messages %}
+      <div class="staff-message {% if item.sender_id == user.pk %}staff-message-own{% endif %}">
+        <div class="staff-message-bubble"><div class="staff-message-author">{{ item.sender.get_full_name|default:item.sender.username }}</div><div class="staff-message-body">{{ item.body|linebreaksbr }}</div><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"M j · g:i A" }}</time></div>
+      </div>
+    {% empty %}<div class="empty-state" id="staff-chat-empty">No messages yet. Send a message to start the conversation.</div>{% endfor %}
+  </div>
+  <div class="small text-secondary mb-2" id="staff-typing" aria-live="polite"></div>
+  <form id="staff-chat-form" class="d-flex gap-2 align-items-end">
+    {% csrf_token %}
+    <label class="visually-hidden" for="staff-chat-input">Message</label>
+    <textarea id="staff-chat-input" class="form-control" rows="2" maxlength="4000" placeholder="Write a private staff message…" required></textarea>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-send-fill me-1"></i>Send</button>
+  </form>
+  <div class="small text-secondary mt-2" id="staff-chat-status">Connecting securely…</div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/staff_chat.js" defer></script>{% endblock %}

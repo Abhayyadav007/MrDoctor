@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}My team workspace{% endblock %}
+{% block content %}
+<section class="page-heading mb-4"><div><span class="welcome-tag">MY WORKSPACE</span><h1>Team notes and meetings</h1><p>Review manager remarks, upcoming meetings, and direct staff conversations.</p></div></section>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <section class="panel">
+      <div class="panel-heading"><div><span class="section-kicker">FEEDBACK</span><h2 class="h5 mb-0">Remarks about me</h2></div></div>
+      {% for remark in remarks %}<div class="visit-card"><p>{{ remark.body|linebreaksbr }}</p><span class="small text-secondary">{{ remark.author|default:"Former manager" }} · {{ remark.created_at|date:"M j, Y · g:i A" }}</span></div>{% empty %}<p class="empty-state">No manager remarks yet.</p>{% endfor %}
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel mb-4">
+      <div class="panel-heading"><div><span class="section-kicker">CALENDAR</span><h2 class="h5 mb-0">My staff meetings</h2></div></div>
+      {% for meeting in meetings %}
+        <div class="appointment-row"><div class="row-main"><strong>{{ meeting.title }}</strong><div class="small text-secondary">{{ meeting.scheduled_at|date:"D, M j · g:i A" }} · Organizer: {{ meeting.organizer.get_full_name|default:meeting.organizer.username }}</div><span class="badge {% if meeting.tag == 'URGENT' %}text-bg-danger{% elif meeting.tag == 'IMPORTANT' %}text-bg-warning{% else %}text-bg-light{% endif %}">{{ meeting.get_tag_display }}</span><span class="badge text-bg-light">{{ meeting.get_status_display }}</span>{% if meeting.details %}<div class="small text-secondary mt-1">{{ meeting.details }}</div>{% endif %}</div></div>
+      {% empty %}<p class="empty-state">No staff meetings scheduled.</p>{% endfor %}
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><span class="section-kicker">DIRECT MESSAGES</span><h2 class="h5 mb-0">Your managers and team</h2></div></div>
+      {% for peer in peers %}<a class="list-row text-decoration-none" href="{% url 'staff_chat' peer.pk %}"><span class="case-symbol"><i class="bi bi-person-lines-fill"></i></span><div class="row-main"><strong>{{ peer.get_full_name|default:peer.username }}</strong><div class="small text-secondary">{{ peer.get_role_display }}</div></div><i class="bi bi-chevron-right row-chevron"></i></a>{% empty %}<p class="empty-state">No staff contacts are available.</p>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Doctor payroll{% endblock %}
+{% block content %}
+<section class="page-heading mb-4">
+  <div><span class="welcome-tag">ADMINISTRATION</span><h1>Doctor compensation</h1><p>Set monthly salaries, configure rating bonuses, and prepare an auditable payroll ledger.</p></div>
+</section>
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <section class="panel p-4 h-100">
+      <h2 class="h5">Monthly base salary</h2>
+      <p class="small text-secondary">Changes apply to future payroll drafts; saved payroll records keep their original salary snapshot.</p>
+      <form method="post" action="{% url 'salary_update' %}">{% csrf_token %}
+        {% for field in salary_form %}<div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+        <button class="btn btn-primary">Save salary change</button>
+      </form>
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="panel p-4 h-100">
+      <h2 class="h5">Rating bonus tiers</h2>
+      <p class="small text-secondary">A doctor's monthly average is rounded to the nearest star. The matching tier is applied when payroll is generated.</p>
+      <form method="post" action="{% url 'bonus_tiers_update' %}">{% csrf_token %}
+        <div class="row">{% for field in bonus_form %}<div class="col-sm-6 mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}</div>
+        <button class="btn btn-outline-primary">Save bonus tiers</button>
+      </form>
+    </section>
+  </div>
+</div>
+<section class="panel p-4 mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div><h2 class="h5 mb-1">Generate monthly payroll</h2><p class="small text-secondary mb-0">Drafts can be regenerated; approved and paid records are locked.</p></div>
+    <form class="d-flex align-items-end gap-2" method="post" action="{% url 'payroll_generate' %}">{% csrf_token %}
+      <div><label class="form-label" for="{{ generation_form.month.id_for_label }}">{{ generation_form.month.label }}</label>{{ generation_form.month }}</div>
+      <button class="btn btn-primary">Prepare drafts</button>
+    </form>
+  </div>
+</section>
+<section class="panel mb-4">
+  <div class="panel-heading"><div><span class="section-kicker">DOCTOR DIRECTORY</span><h2 class="h5 mb-0">Performance and compensation</h2></div></div>
+  {% for doctor in doctors %}
+    <div class="list-row">
+      <div class="row-main"><strong>Dr. {{ doctor.get_full_name|default:doctor.username }}</strong><div class="small text-secondary">{{ doctor.email|default:"No email" }}</div></div>
+      <div class="text-end"><strong>{% if doctor.pay_profile %}₹{{ doctor.pay_profile.base_monthly_salary|floatformat:2 }}{% else %}Not set{% endif %}</strong><div class="small text-secondary">monthly base</div></div>
+      <div class="text-end ms-3"><strong>{% if doctor.average_rating %}<i class="bi bi-star-fill text-warning"></i> {{ doctor.average_rating|floatformat:1 }}/5{% else %}—{% endif %}</strong><div class="small text-secondary">{{ doctor.rating_count }} rating{{ doctor.rating_count|pluralize }}</div></div>
+    </div>
+  {% empty %}<p class="empty-state">No doctor accounts yet.</p>{% endfor %}
+</section>
+<section class="panel">
+  <div class="panel-heading"><div><span class="section-kicker">PAYROLL LEDGER</span><h2 class="h5 mb-0">Recent payroll records</h2></div></div>
+  {% for record in records %}
+    <article class="p-3 border-top">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div><strong>Dr. {{ record.doctor.get_full_name|default:record.doctor.username }}</strong><span class="text-secondary"> · {{ record.period|date:"F Y" }}</span><div class="small text-secondary">Base ₹{{ record.base_salary|floatformat:2 }} + rating bonus ₹{{ record.rating_bonus|floatformat:2 }}{% if record.average_rating %} · {{ record.average_rating }}/5 from {{ record.rating_count }} ratings{% endif %}</div></div>
+        <div class="text-end"><strong>₹{{ record.total_due|floatformat:2 }}</strong><div><span class="badge text-bg-light">{{ record.get_status_display }}</span></div></div>
+      </div>
+      {% if record.adjustments.all %}<div class="small mt-2">{% for adjustment in record.adjustments.all %}<div>{{ adjustment.amount|floatformat:2 }} INR — {{ adjustment.reason }} <span class="text-secondary">({{ adjustment.actor }})</span></div>{% endfor %}</div>{% endif %}
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        {% if record.status == "DRAFT" %}
+          <form method="post" action="{% url 'payroll_adjust' record.pk %}" class="d-flex flex-wrap gap-2">{% csrf_token %}<input class="form-control form-control-sm" style="max-width:145px" name="amount" type="number" step="0.01" placeholder="+/- INR" required><input class="form-control form-control-sm" style="max-width:260px" name="reason" maxlength="240" placeholder="Adjustment reason" required><button class="btn btn-sm btn-outline-secondary">Add adjustment</button></form>
+          <form method="post" action="{% url 'payroll_status' record.pk %}">{% csrf_token %}<input type="hidden" name="status" value="APPROVED"><button class="btn btn-sm btn-outline-primary">Approve</button></form>
+        {% elif record.status == "APPROVED" %}
+          <form method="post" action="{% url 'payroll_status' record.pk %}">{% csrf_token %}<input type="hidden" name="status" value="PAID"><button class="btn btn-sm btn-success">Mark paid</button></form>
+        {% endif %}
+      </div>
+    </article>
+  {% empty %}<p class="empty-state">No payroll records yet. Generate a month to create drafts.</p>{% endfor %}
+</section>
+{% endblock %}

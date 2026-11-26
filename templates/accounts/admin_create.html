@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% load form_tags %}{% block title %}Create administrator{% endblock %}
+{% block content %}
+<section class="page-heading admin-heading mb-4"><div><span class="welcome-tag"><i class="bi bi-person-gear me-1"></i> SUPERADMIN ONLY</span><h1>Create an administrator</h1><p>Administrators can manage clinical operations and payroll; only you can create admin accounts.</p></div></section>
+<div class="form-card card shadow-sm"><div class="card-body p-4"><form method="post" novalidate>{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field|add_class:"form-control" }}{% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}{% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}</div>{% endfor %}<button class="btn btn-primary"><i class="bi bi-person-plus me-2"></i>Create admin account</button></form></div></div>
+{% endblock %}

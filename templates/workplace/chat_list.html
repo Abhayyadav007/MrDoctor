@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Staff messages{% endblock %}
+{% block content %}
+<section class="page-heading mb-4"><div><span class="welcome-tag">PRIVATE STAFF CHANNELS</span><h1>Staff messages</h1><p>Direct conversations with your managers and employees.</p></div></section>
+<section class="panel">
+  {% for peer in peers %}
+    <a class="list-row text-decoration-none" href="{% url 'staff_chat' peer.pk %}">
+      <span class="case-symbol"><i class="bi bi-chat-square-text"></i></span>
+      <div class="row-main"><strong>{{ peer.get_full_name|default:peer.username }}</strong><div class="small text-secondary">{{ peer.get_role_display }}</div>{% if peer.last_staff_message %}<div class="small text-secondary text-truncate">{{ peer.last_staff_message.body }}</div>{% else %}<div class="small text-secondary">Start a conversation</div>{% endif %}</div>
+      <i class="bi bi-chevron-right row-chevron"></i>
+    </a>
+  {% empty %}<p class="empty-state">No staff conversations are available for this account.</p>{% endfor %}
+</section>
+{% endblock %}

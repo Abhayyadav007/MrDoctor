@@ -27,8 +27,13 @@
         <a class="nav-link" href="{% url 'case_list' %}"><i class="bi bi-folder2-open"></i> Cases</a>
         {% if user.role == "PATIENT" and not user.is_superuser %}<a class="nav-link" href="{% url 'appointment_request' %}"><i class="bi bi-calendar2-plus"></i> Appointments</a>{% endif %}
         {% if user.role == "PATIENT" or user.role == "DOCTOR" %}{% if not user.is_superuser %}<a class="nav-link" href="{% url 'chat_list' %}"><i class="bi bi-chat-dots"></i> Messages</a>{% endif %}{% endif %}
+        {% if user.role == "ADMIN" or user.role == "DOCTOR" %}<a class="nav-link" href="{% url 'staff_chat_list' %}"><i class="bi bi-chat-square-text"></i> Staff chat</a>{% endif %}
+        {% if user.role == "DOCTOR" %}<a class="nav-link" href="{% url 'my_staff_work' %}"><i class="bi bi-calendar2-check"></i> My team</a>{% endif %}
+        {% if user.role == "ADMIN" or user.is_superuser %}<a class="nav-link" href="{% url 'workplace_dashboard' %}"><i class="bi bi-people-fill"></i> Team management</a>{% endif %}
         {% if user.role == "ADMIN" or user.role == "DOCTOR" or user.is_superuser %}<a class="nav-link" href="{% url 'patient_list' %}"><i class="bi bi-people"></i> Patients</a>{% endif %}
         {% if user.role == "ADMIN" or user.is_superuser %}<a class="nav-link" href="{% url 'doctor_create' %}"><i class="bi bi-person-plus"></i> Add doctor</a>{% endif %}
+        {% if user.role == "ADMIN" or user.is_superuser %}<a class="nav-link" href="{% url 'payroll_dashboard' %}"><i class="bi bi-cash-coin"></i> Payroll</a>{% endif %}
+        {% if user.is_superuser %}<a class="nav-link" href="{% url 'admin_create' %}"><i class="bi bi-person-gear"></i> Add admin</a>{% endif %}
       </div>
       <div class="navbar-nav align-items-lg-center user-tools">
         <div class="nav-item dropdown">

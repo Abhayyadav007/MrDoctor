@@ -11,9 +11,37 @@ A local-first Django application for patient records, clinician workflows, appoi
 - A modern browser for video/audio calls
 - Optional: `cloudflared` or `ngrok` only when testing from a second device
 
-## Local setup
+## Run with Docker Compose (recommended)
 
-Install PostgreSQL locally. On macOS with Homebrew:
+Docker Desktop is sufficient; Compose starts the app and PostgreSQL together without a paid service:
+
+```bash
+cp .env.example .env
+```
+
+Set a private random `SECRET_KEY` in `.env`, then start the application:
+
+```bash
+docker compose up --build
+```
+
+Open <http://127.0.0.1:8000/>. Compose runs database migrations when the web container starts. In another terminal, create the single superadmin with a password entered interactively:
+
+```bash
+docker compose exec web python manage.py create_superadmin
+```
+
+The configured email defaults to `abhaykumar@example.test` and may be changed with `SUPERADMIN_EMAIL`. The command prompts for a strong password; no admin password is stored in the repository. Create the synthetic demo users, doctors, and cases with:
+
+```bash
+docker compose exec web python manage.py seed_demo
+```
+
+The demo admin is a regular admin account; the configured superadmin creates additional admins from the **Add admin** navigation link. Start/stop the containers with `docker compose up` and `docker compose down`; persisted database and uploaded files are held in named Docker volumes. To remove local database data as well, use `docker compose down -v`.
+
+## Local Python setup
+
+You can run Django directly on your computer while using your own PostgreSQL installation or Docker-managed PostgreSQL. For a local Homebrew PostgreSQL:
 
 ```bash
 brew install postgresql@16
@@ -48,6 +76,8 @@ python manage.py seed_demo
 
 Demo credentials are `demo-admin / DemoAdmin123!`, `demo-doctor1` or `demo-doctor2 / DemoDoctor123!`, and `demo-patient1` through `demo-patient3 / DemoPatient123!`. Change these passwords before sharing the application.
 
+Create the unique superadmin separately with `python manage.py create_superadmin`; this prompts for a password and uses the `SUPERADMIN_EMAIL` value in `.env`. Additional admin accounts can only be created by that superadmin from the **Add admin** page. Sign-in requires choosing the matching role (Patient, Doctor, or Admin).
+
 Start the ASGI server (WebSockets are supported):
 
 ```bash
@@ -66,6 +96,8 @@ http://127.0.0.1:8000/accounts/google/login/callback/
 
 For another local host or HTTPS tunnel, add the matching callback URI to the OAuth client and use that hostname in `ALLOWED_HOSTS`. Google may require configuring the OAuth consent screen and adding test users while the consent screen is in testing mode. Do not commit OAuth secrets. Without Google credentials, email registration/sign-in still works and the Google button is hidden.
 
+Admins should enter each doctor's real Google-account email when creating the doctor, and the superadmin should use the admin's real Google-account email when creating that admin. Google login matches a **verified** Google email to the existing account and keeps its assigned role; it does not grant admin or doctor access to a new Google signup. New Google signups continue to create patient accounts.
+
 ## Implementation and basic checks
 
 1. **Setup and authentication:** email-based registration/login, email verification, password change/reset, optional Google sign-in/sign-up, custom roles, doctor account creation from the admin dashboard, and Django admin. Check email verification and reset flow; links appear in the server console.
@@ -73,11 +105,21 @@ For another local host or HTTPS tunnel, add the matching callback URI to the OAu
 3. **Chat and calls:** open Messages for an assigned case. Chat history is persisted; the case WebSocket is restricted to that case's patient and assigned doctor. Start an audio or video call using the call buttons.
 4. **Dashboards and polish:** role-specific dashboards, case/priority filtering, patient and case search/pagination, notifications, and admin charts are included.
 
-Run the permission and consumer tests with:
+Doctor ratings and administrator payroll tools are available from the dashboard/navigation. Patients can rate a doctor once per recovered or closed case. Admins set monthly base salary and rating bonus tiers, generate monthly drafts, record signed INR adjustments, approve drafts, and mark approved entries paid. Each administrative change is recorded in the payroll audit ledger.
+
+### Manager and staff communication
+
+Administrators can manage doctor-facing staff workflows: add dated remarks to a doctor's employee record, chat with doctors in real time, and schedule meetings with one or more doctors. Meetings support **Standard**, **Important**, and **Urgent** tags; employees see their remarks and meeting invitations under **My team**. The configured superadmin has the same manager tools and can additionally manage and message administrator accounts. Patients cannot access staff pages, messages, remarks, or meetings, and WebSocket chat connections enforce the same manager/employee relationship as the HTTP views.
+
+Run the Django checks and full test suite with:
 
 ```bash
-python manage.py test accounts
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test
 ```
+
+GitHub Actions runs those checks and tests against PostgreSQL for pushes and pull requests, then verifies a Docker image build. It does not publish or deploy the image; no paid registry or hosting is configured.
 
 ## Video/audio testing
 
