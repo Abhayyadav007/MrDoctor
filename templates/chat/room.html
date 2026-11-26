@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block title %}Chat · {{ case.title }}{% endblock %}
+{% block head %}<meta name="csrf-token" content="{{ csrf_token }}">{% endblock %}
+{% block content %}
+<div class="chat-shell">
+  <header class="chat-header"><a href="{% url 'chat_list' %}" class="text-secondary me-3"><i class="bi bi-arrow-left"></i></a><div class="avatar-circle"><i class="bi bi-person"></i></div><div class="flex-grow-1 ms-2"><strong>{{ peer.get_full_name|default:peer.username }}</strong><div class="small text-secondary"><span id="presence">Connecting…</span> · {{ case.title }}</div></div>
+    <button class="btn btn-sm btn-outline-primary" id="audioCall" title="Start audio call"><i class="bi bi-telephone"></i></button><button class="btn btn-sm btn-primary ms-2" id="videoCall" title="Start video call"><i class="bi bi-camera-video"></i></button>
+  </header>
+  <div class="call-banner d-none" id="callBanner"><span id="callState">Calling…</span><span id="callTimer" class="ms-2">00:00</span><button class="btn btn-sm btn-outline-secondary ms-auto" id="muteAudio" title="Mute microphone"><i class="bi bi-mic"></i></button><button class="btn btn-sm btn-danger ms-2" id="endCall">End call</button></div>
+  <div class="video-stage d-none" id="videoStage"><video id="remoteVideo" autoplay playsinline></video><audio id="remoteAudio" autoplay></audio><video id="localVideo" autoplay muted playsinline></video><div class="video-controls"><button class="btn btn-light" id="muteMic"><i class="bi bi-mic"></i></button><button class="btn btn-light" id="toggleCamera"><i class="bi bi-camera-video"></i></button></div></div>
+  <div class="incoming-call d-none" id="incomingCall"><div class="incoming-card"><div class="avatar-circle mx-auto mb-2"><i class="bi bi-telephone-inbound"></i></div><strong id="incomingName">Incoming call</strong><p class="text-secondary mb-3">Your care team is calling</p><button class="btn btn-success" id="acceptCall"><i class="bi bi-telephone me-1"></i>Accept</button><button class="btn btn-outline-danger ms-2" id="rejectCall">Reject</button></div></div>
+  <section class="chat-messages" id="chatMessages" aria-live="polite"></section>
+  <div class="typing-indicator" id="typingIndicator"></div>
+  <form class="chat-composer" id="chatForm"><input class="form-control" id="messageInput" maxlength="4000" placeholder="Write a message…" autocomplete="off"><button class="btn btn-primary" aria-label="Send"><i class="bi bi-send-fill"></i></button></form>
+  <div class="call-history">{% for call in case.calls.all|slice:":5" %}<span class="call-history-item"><i class="bi bi-telephone"></i> {{ call.status }} · {{ call.started_at|date:"M j, H:i" }}{% if call.duration %} · {{ call.duration }}s{% endif %}</span>{% endfor %}</div>
+</div>
+{{ initial_messages|json_script:"initial-messages" }}
+<script>
+window.CaseChat = {caseId: {{ case.pk }}, userId: {{ user.pk }}, peerName: "{{ peer.get_full_name|default:peer.username|escapejs }}", peerId: {{ peer.pk }}};
+</script>
+{% endblock %}
+{% block scripts %}<script src="/static/js/chat.js"></script>{% endblock %}
