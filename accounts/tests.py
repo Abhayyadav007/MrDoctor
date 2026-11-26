@@ -5,7 +5,7 @@ from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from channels.db import database_sync_to_async
 from django.core.management import call_command
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.conf import settings
 from django.test import RequestFactory
 from django.urls import reverse
@@ -61,6 +61,22 @@ class AllauthTests(TestCase):
     def test_allauth_login_and_signup_pages_render(self):
         self.assertEqual(self.client.get(reverse("account_login")).status_code, 200)
         self.assertEqual(self.client.get(reverse("account_signup")).status_code, 200)
+
+    @override_settings(SOCIALACCOUNT_PROVIDERS={
+        "google": {"APPS": [{"client_id": "test-client-id", "secret": "test-secret", "key": ""}]}
+    })
+    def test_login_google_option_and_remember_checkbox_render_correctly(self):
+        response = self.client.get(reverse("account_login"))
+        self.assertContains(response, 'id="google-login-option"')
+        self.assertNotContains(response, 'id="google-login-option" hidden')
+        self.assertContains(response, 'class="form-check-input"')
+
+        response = self.client.post(reverse("account_login"), {
+            "login": "not-a-user",
+            "password": "invalid",
+            "role": User.Role.ADMIN,
+        })
+        self.assertContains(response, 'id="google-login-option" hidden')
 
     def test_login_requires_the_selected_account_role_to_match(self):
         user = User.objects.create_user(username="role-doctor", email="role-doctor@example.test",
