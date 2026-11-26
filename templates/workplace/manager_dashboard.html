@@ -20,6 +20,11 @@
           <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{% url 'employee_workspace' employee.pk %}"><i class="bi bi-journal-text"></i> Remarks</a>
             <a class="btn btn-sm btn-outline-secondary" href="{% url 'staff_chat' employee.pk %}"><i class="bi bi-chat-dots"></i> Chat</a>
+            {% if user.is_superuser %}
+              <form method="post" action="{% url 'user_remove' employee.pk %}" onsubmit="return confirm('Permanently remove this account and its linked records?');">
+                {% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-person-x"></i> Remove</button>
+              </form>
+            {% endif %}
           </div>
         </div>
       {% empty %}<p class="empty-state">No employees in your management scope.</p>{% endfor %}

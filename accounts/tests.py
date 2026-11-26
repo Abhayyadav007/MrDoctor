@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from io import StringIO
 from unittest.mock import patch
 
@@ -9,6 +10,7 @@ from django.test import TestCase, TransactionTestCase, override_settings
 from django.conf import settings
 from django.test import RequestFactory
 from django.urls import reverse
+from django.utils import timezone
 from allauth.account.models import EmailAddress
 from allauth.account.utils import has_verified_email
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin
@@ -20,6 +22,79 @@ from calls.models import CallLog
 from cases.models import Case
 from chat.models import ChatMessage
 from chat.routing import websocket_urlpatterns
+from payroll.models import PayrollAdjustment, PayrollRecord
+from workplace.models import StaffMeeting
+
+
+class AccountRemovalTests(TestCase):
+    def setUp(self):
+        self.superadmin = User.objects.create_superuser(
+            username=settings.SUPERADMIN_USERNAME,
+            email=settings.SUPERADMIN_EMAIL,
+            password="Secure-Test-Password-984!",
+        )
+        self.doctor = User.objects.create_user(
+            username="removable-doctor",
+            password="Secure-Test-Password-984!",
+            role=User.Role.DOCTOR,
+        )
+
+    def test_only_superadmin_can_remove_accounts(self):
+        manager = User.objects.create_user(
+            username="regular-manager",
+            password="Secure-Test-Password-984!",
+            role=User.Role.ADMIN,
+        )
+        self.client.force_login(manager)
+        response = self.client.post(reverse("user_remove", args=[self.doctor.pk]))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(User.objects.filter(pk=self.doctor.pk).exists())
+
+    def test_superadmin_removal_cleans_protected_account_relations(self):
+        payroll = PayrollRecord.objects.create(
+            doctor=self.doctor,
+            period=date(2026, 1, 1),
+            base_salary="1000.00",
+        )
+        adjustment = PayrollAdjustment.objects.create(
+            payroll=payroll,
+            amount="100.00",
+            reason="Test adjustment",
+            actor=self.doctor,
+        )
+        meeting = StaffMeeting.objects.create(
+            organizer=self.doctor,
+            title="Test meeting",
+            scheduled_at=timezone.now() + timedelta(days=1),
+        )
+        self.client.force_login(self.superadmin)
+
+        response = self.client.post(reverse("user_remove", args=[self.doctor.pk]))
+
+        self.assertRedirects(response, reverse("workplace_dashboard"))
+        self.assertFalse(User.objects.filter(pk=self.doctor.pk).exists())
+        self.assertFalse(PayrollRecord.objects.filter(pk=payroll.pk).exists())
+        self.assertFalse(PayrollAdjustment.objects.filter(pk=adjustment.pk).exists())
+        self.assertFalse(StaffMeeting.objects.filter(pk=meeting.pk).exists())
+
+    def test_superadmin_cannot_remove_themselves(self):
+        self.client.force_login(self.superadmin)
+        response = self.client.post(reverse("user_remove", args=[self.superadmin.pk]))
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(User.objects.filter(pk=self.superadmin.pk, is_superuser=True).exists())
+
+    def test_superadmin_can_remove_an_admin(self):
+        admin = User.objects.create_user(
+            username="removable-admin",
+            password="Secure-Test-Password-984!",
+            role=User.Role.ADMIN,
+        )
+        self.client.force_login(self.superadmin)
+
+        response = self.client.post(reverse("user_remove", args=[admin.pk]))
+
+        self.assertRedirects(response, reverse("workplace_dashboard"))
+        self.assertFalse(User.objects.filter(pk=admin.pk).exists())
 
 
 class CasePermissionsTests(TestCase):

@@ -1,8 +1,8 @@
 from datetime import timedelta
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Avg, Count
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView
@@ -13,6 +13,7 @@ from notifications.models import Notification
 from .access import RoleRequiredMixin
 from .forms import AccountProfileForm, AdminAccountCreationForm, PatientProfileForm
 from .models import DoctorProfile, PatientProfile, User
+from .services import remove_account
 
 
 class DashboardView(LoginRequiredMixin, View):
@@ -95,6 +96,11 @@ class PatientDirectoryView(RoleRequiredMixin, ListView):
             qs = qs.filter(first_name__icontains=query) | qs.filter(last_name__icontains=query) | qs.filter(username__icontains=query)
         return qs
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["can_remove_accounts"] = self.request.user.is_superuser
+        return context
+
 
 class DoctorCreateView(RoleRequiredMixin, View):
     allowed_roles = (User.Role.ADMIN,)
@@ -153,3 +159,19 @@ class AdminCreateView(LoginRequiredMixin, View):
             messages.success(request, "Admin account created. Share its credentials securely.")
             return redirect("dashboard")
         return render(request, self.template_name, {"form": form})
+
+
+class UserRemoveView(LoginRequiredMixin, UserPassesTestMixin, View):
+    raise_exception = True
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def post(self, request, user_id):
+        user = get_object_or_404(User.objects.filter(is_superuser=False), pk=user_id)
+        role = user.role
+        remove_account(user)
+        messages.success(request, f"{User.Role(role).label} account removed.")
+        if role == User.Role.PATIENT:
+            return redirect("patient_list")
+        return redirect("workplace_dashboard")

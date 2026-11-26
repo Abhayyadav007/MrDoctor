@@ -1,6 +1,6 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
-from .views import AdminCreateView, DoctorCreateView, PatientDirectoryView, ProfileView
+from .views import AdminCreateView, DoctorCreateView, PatientDirectoryView, ProfileView, UserRemoveView
 
 urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
@@ -21,4 +21,5 @@ urlpatterns = [
     path("patients/", PatientDirectoryView.as_view(), name="patient_list"),
     path("doctors/create/", DoctorCreateView.as_view(), name="doctor_create"),
     path("admins/create/", AdminCreateView.as_view(), name="admin_create"),
+    path("users/<int:user_id>/remove/", UserRemoveView.as_view(), name="user_remove"),
 ]
