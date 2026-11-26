@@ -31,7 +31,7 @@ Open <http://127.0.0.1:8000/>. Compose runs database migrations when the web con
 docker compose exec web python manage.py create_superadmin
 ```
 
-The configured email defaults to `abhaykumar@example.test` and may be changed with `SUPERADMIN_EMAIL`. The command prompts for a strong password; no admin password is stored in the repository. Create the synthetic demo users, doctors, and cases with:
+The configured email defaults to `abhaykumar@example.test` and the username defaults to `12303289`; both can be changed with `SUPERADMIN_EMAIL` and `SUPERADMIN_USERNAME`. The command prompts for a strong password; no admin password is stored in the repository. Create the synthetic demo users, doctors, and cases with:
 
 ```bash
 docker compose exec web python manage.py seed_demo
@@ -61,11 +61,11 @@ pip install -r requirements.txt
 cp .env.example .env                  # Windows PowerShell: Copy-Item .env.example .env
 ```
 
-Edit `.env`: set a random `SECRET_KEY`, set `DEBUG=True` for local development, add local names to `ALLOWED_HOSTS`, and set the PostgreSQL username/password for your installation. Then initialize the database and create an administrator:
+Edit `.env`: set a random `SECRET_KEY`, set `DEBUG=True` for local development, add local names to `ALLOWED_HOSTS`, and set the PostgreSQL username/password for your installation. Then initialize the database and create the configured superadmin:
 
 ```bash
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py create_superadmin
 ```
 
 Alternatively, create a complete synthetic clinic:
@@ -76,7 +76,7 @@ python manage.py seed_demo
 
 Demo credentials are `demo-admin / DemoAdmin123!`, `demo-doctor1` or `demo-doctor2 / DemoDoctor123!`, and `demo-patient1` through `demo-patient3 / DemoPatient123!`. Change these passwords before sharing the application.
 
-Create the unique superadmin separately with `python manage.py create_superadmin`; this prompts for a password and uses the `SUPERADMIN_EMAIL` value in `.env`. Additional admin accounts can only be created by that superadmin from the **Add admin** page. Sign-in requires choosing the matching role (Patient, Doctor, or Admin).
+`python manage.py create_superadmin` prompts for a password and uses the configured email and username in `.env`. Additional admin accounts can only be created by that superadmin from the **Add admin** page. Sign-in requires choosing the matching role (Patient, Doctor, or Admin). Patients use email and password; doctors and admins use the unique username and password chosen by their manager. The superadmin signs in with username `12303289` by default. Google sign-in remains available for staff with a matching verified email.
 
 Start the ASGI server (WebSockets are supported):
 

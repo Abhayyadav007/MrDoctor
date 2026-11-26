@@ -22,12 +22,18 @@ class Command(BaseCommand):
         if other_superuser.exists():
             raise CommandError("A different superuser already exists; resolve it before provisioning.")
 
+        username = settings.SUPERADMIN_USERNAME
+        username_owner = User.objects.filter(username=username)
+        if existing:
+            username_owner = username_owner.exclude(pk=existing.pk)
+        if username_owner.exists():
+            raise CommandError(f"The configured superadmin username {username} is already in use.")
+
         password = getpass(f"New password for {email}: ")
         confirmation = getpass("Confirm password: ")
         if not password or password != confirmation:
             raise CommandError("Passwords are empty or do not match.")
 
-        username = existing.username if existing else email.split("@", 1)[0]
         user = existing or User(username=username, email=email)
         try:
             validate_password(password, user=user)
@@ -35,6 +41,7 @@ class Command(BaseCommand):
             raise CommandError(str(error)) from error
 
         with transaction.atomic():
+            user.username = username
             user.email = email
             user.role = User.Role.ADMIN
             user.is_staff = True

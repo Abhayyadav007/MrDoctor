@@ -113,7 +113,7 @@ class ManagerWorkflowTests(TestCase):
 
     def test_superadmin_can_manage_administrators_and_doctors(self):
         superadmin = User.objects.create_superuser(
-            username="configured-superadmin", email=settings.SUPERADMIN_EMAIL,
+            username=settings.SUPERADMIN_USERNAME, email=settings.SUPERADMIN_EMAIL,
             password="Secure-Test-Password-984!",
         )
         self.client.force_login(superadmin)

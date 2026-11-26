@@ -11,6 +11,8 @@ class UserManager(DjangoUserManager):
         expected_email = settings.SUPERADMIN_EMAIL.lower()
         if not email or email.lower() != expected_email:
             raise ValueError(f"The only superuser must use {settings.SUPERADMIN_EMAIL}.")
+        if username != settings.SUPERADMIN_USERNAME:
+            raise ValueError(f"The only superuser username must be {settings.SUPERADMIN_USERNAME}.")
         if self.get_queryset().filter(is_superuser=True).exists():
             raise ValueError("A superuser already exists.")
         extra_fields.setdefault("role", "ADMIN")
@@ -39,9 +41,15 @@ class User(AbstractUser):
 
     def clean(self):
         super().clean()
-        if self.is_superuser and self.email.lower() != settings.SUPERADMIN_EMAIL.lower():
+        if self.is_superuser:
             from django.core.exceptions import ValidationError
-            raise ValidationError({"email": f"The only superuser email is {settings.SUPERADMIN_EMAIL}."})
+            errors = {}
+            if (self.email or "").lower() != settings.SUPERADMIN_EMAIL.lower():
+                errors["email"] = f"The only superuser email is {settings.SUPERADMIN_EMAIL}."
+            if self.username != settings.SUPERADMIN_USERNAME:
+                errors["username"] = f"The only superuser username is {settings.SUPERADMIN_USERNAME}."
+            if errors:
+                raise ValidationError(errors)
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_role_display()})"

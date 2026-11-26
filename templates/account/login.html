@@ -6,3 +6,4 @@
 {% if google_oauth_enabled %}<div class="divider my-3"><span>or continue with</span></div><a class="btn btn-outline-secondary w-100" href="{% provider_login_url 'google' process='login' %}"><i class="bi bi-google me-2"></i>Google</a>{% endif %}
 <div class="auth-links"><a href="{% url 'account_reset_password' %}">Forgot password?</a><a href="{% url 'account_signup' %}">Create an account</a></div><div class="auth-security"><i class="bi bi-shield-lock-fill me-1"></i> Your connection is protected</div>
 </div></div></div>{% endblock %}
+{% block scripts %}<script src="/static/js/login_role.js" defer></script>{% endblock %}

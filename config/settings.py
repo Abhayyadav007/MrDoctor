@@ -72,6 +72,7 @@ else:
     }}
 AUTH_USER_MODEL = "accounts.User"
 SUPERADMIN_EMAIL = config("SUPERADMIN_EMAIL", default="abhaykumar@example.test").lower()
+SUPERADMIN_USERNAME = config("SUPERADMIN_USERNAME", default="12303289")
 ACCOUNT_FORMS = {"login": "accounts.forms.RoleAwareLoginForm"}
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
@@ -80,7 +81,7 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 ACCOUNT_ADAPTER = "accounts.adapters.PatientAccountAdapter"
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.PatientSocialAccountAdapter"
-ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_LOGIN_METHODS = {"email", "username"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_UNIQUE_EMAIL = True

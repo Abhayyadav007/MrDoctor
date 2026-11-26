@@ -67,15 +67,47 @@ class AllauthTests(TestCase):
                                         password="Strong-Test-Password-984!", role=User.Role.DOCTOR)
         EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
         correct_role = self.client.post(reverse("account_login"), {
-            "login": user.email, "password": "Strong-Test-Password-984!", "role": User.Role.DOCTOR,
+            "login": user.username, "password": "Strong-Test-Password-984!", "role": User.Role.DOCTOR,
         })
         self.assertEqual(correct_role.status_code, 302)
         self.client.logout()
         wrong_role = self.client.post(reverse("account_login"), {
-            "login": user.email, "password": "Strong-Test-Password-984!", "role": User.Role.PATIENT,
+            "login": user.username, "password": "Strong-Test-Password-984!", "role": User.Role.PATIENT,
         })
         self.assertEqual(wrong_role.status_code, 200)
         self.assertFalse(self.client.session.get("_auth_user_id"))
+
+    def test_staff_use_usernames_and_patients_use_emails_for_password_login(self):
+        doctor = User.objects.create_user(
+            username="username-doctor", email="username-doctor@example.test",
+            password="Strong-Test-Password-984!", role=User.Role.DOCTOR,
+        )
+        patient = User.objects.create_user(
+            username="email-patient-login", email="email-patient-login@example.test",
+            password="Strong-Test-Password-984!", role=User.Role.PATIENT,
+        )
+        EmailAddress.objects.create(user=patient, email=patient.email, primary=True, verified=True)
+
+        response = self.client.post(reverse("account_login"), {
+            "login": doctor.email, "password": "Strong-Test-Password-984!", "role": User.Role.DOCTOR,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.client.session.get("_auth_user_id"))
+        response = self.client.post(reverse("account_login"), {
+            "login": doctor.username, "password": "Strong-Test-Password-984!", "role": User.Role.DOCTOR,
+        })
+        self.assertEqual(response.status_code, 302)
+        self.client.logout()
+
+        response = self.client.post(reverse("account_login"), {
+            "login": patient.username, "password": "Strong-Test-Password-984!", "role": User.Role.PATIENT,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.client.session.get("_auth_user_id"))
+        response = self.client.post(reverse("account_login"), {
+            "login": patient.email, "password": "Strong-Test-Password-984!", "role": User.Role.PATIENT,
+        })
+        self.assertEqual(response.status_code, 302)
 
     def test_email_signup_creates_patient_and_sends_verification(self):
         response = self.client.post(reverse("account_signup"), {
@@ -109,11 +141,36 @@ class AllauthTests(TestCase):
         with self.assertRaises(ValueError):
             User.objects.create_superuser(username="wrong-admin", email="admin@example.test",
                                           password="Strong-Test-Password-984!")
-        admin = User.objects.create_superuser(username="allauth-admin", email=settings.SUPERADMIN_EMAIL,
+        with self.assertRaises(ValueError):
+            User.objects.create_superuser(username="wrong-username", email=settings.SUPERADMIN_EMAIL,
+                                          password="Strong-Test-Password-984!")
+        admin = User.objects.create_superuser(username=settings.SUPERADMIN_USERNAME,
+                                              email=settings.SUPERADMIN_EMAIL,
                                               password="Strong-Test-Password-984!")
         self.assertEqual(admin.role, User.Role.ADMIN)
         self.assertTrue(EmailAddress.objects.filter(user=admin, email=settings.SUPERADMIN_EMAIL,
                                                     verified=True).exists())
+
+    def test_superadmin_password_login_uses_configured_username(self):
+        admin = User.objects.create_superuser(
+            username=settings.SUPERADMIN_USERNAME,
+            email=settings.SUPERADMIN_EMAIL,
+            password="Secure-Test-Password-984!",
+        )
+        response = self.client.post(reverse("account_login"), {
+            "login": admin.email,
+            "password": "Secure-Test-Password-984!",
+            "role": User.Role.ADMIN,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.client.session.get("_auth_user_id"))
+        response = self.client.post(reverse("account_login"), {
+            "login": settings.SUPERADMIN_USERNAME,
+            "password": "Secure-Test-Password-984!",
+            "role": User.Role.ADMIN,
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.client.session.get("_auth_user_id"), str(admin.pk))
 
     def test_create_superadmin_command_prompts_and_verifies_configured_account(self):
         password = "Secure-Local-Test-Password-984!"
@@ -122,6 +179,7 @@ class AllauthTests(TestCase):
             call_command("create_superadmin", stdout=StringIO())
         admin = User.objects.get(email=settings.SUPERADMIN_EMAIL)
         self.assertTrue(admin.is_superuser)
+        self.assertEqual(admin.username, settings.SUPERADMIN_USERNAME)
         self.assertTrue(admin.check_password(password))
         self.assertTrue(EmailAddress.objects.get(user=admin).verified)
 
@@ -135,7 +193,7 @@ class AllauthTests(TestCase):
             password="Secure-Test-Password-984!", role=User.Role.ADMIN,
         )
         superadmin = User.objects.create_superuser(
-            username="google-superadmin", email=settings.SUPERADMIN_EMAIL,
+            username=settings.SUPERADMIN_USERNAME, email=settings.SUPERADMIN_EMAIL,
             password="Secure-Test-Password-984!",
         )
 

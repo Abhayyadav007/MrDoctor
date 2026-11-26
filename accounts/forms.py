@@ -14,15 +14,42 @@ class RoleAwareLoginForm(LoginForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         role = self.fields.pop("role")
+        selected_role = self.data.get("role") if self.is_bound else self.initial.get("role", role.initial)
+        if selected_role == User.Role.PATIENT:
+            self.fields["login"].label = "Email address"
+            self.fields["login"].widget.attrs.update({
+                "placeholder": "Email address",
+                "autocomplete": "email",
+                "type": "email",
+            })
+        else:
+            self.fields["login"].label = "Username"
+            self.fields["login"].widget.attrs.update({
+                "placeholder": "Username",
+                "autocomplete": "username",
+                "type": "text",
+            })
         self.fields = {"role": role, **self.fields}
 
     def clean(self):
         cleaned_data = super().clean()
         selected_role = cleaned_data.get("role")
         if self.user and selected_role != self.user.role:
-            self.add_error(None, "The selected account type does not match this email address.")
+            self.add_error(None, "The selected account type does not match this account.")
             self.user = None
             self._login = None
+        elif self.user and selected_role == User.Role.PATIENT:
+            login_identifier = cleaned_data.get("login", "").strip()
+            if login_identifier.casefold() != self.user.email.casefold():
+                self.add_error("login", "Patients must sign in with their email address.")
+                self.user = None
+                self._login = None
+        elif self.user:
+            login_identifier = cleaned_data.get("login", "").strip()
+            if login_identifier != self.user.get_username():
+                self.add_error("login", "Staff accounts must sign in with their username.")
+                self.user = None
+                self._login = None
         return cleaned_data
 
 
