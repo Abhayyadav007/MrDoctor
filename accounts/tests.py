@@ -11,6 +11,7 @@ from django.conf import settings
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
+from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.account.models import EmailAddress
 from allauth.account.utils import has_verified_email
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin
@@ -322,7 +323,7 @@ class AllauthTests(TestCase):
         self.assertTrue(admin.check_password(password))
         self.assertTrue(EmailAddress.objects.get(user=admin).verified)
 
-    def test_verified_google_email_authenticates_existing_staff_without_changing_role(self):
+    def test_google_signin_rejects_existing_staff_accounts(self):
         doctor = User.objects.create_user(
             username="google-doctor", email="google-doctor@example.test",
             password="Secure-Test-Password-984!", role=User.Role.DOCTOR,
@@ -337,6 +338,8 @@ class AllauthTests(TestCase):
         )
 
         for existing_user in (doctor, admin, superadmin):
+            expected_role = existing_user.role
+            email_was_verified = has_verified_email(existing_user, existing_user.email)
             request = RequestFactory().get("/")
             provider = GoogleProvider(
                 request,
@@ -351,10 +354,29 @@ class AllauthTests(TestCase):
             login.lookup()
             self.assertEqual(login.user.pk, existing_user.pk)
             self.assertTrue(login._did_authenticate_by_email)
-            self.assertEqual(login.user.role, existing_user.role)
-            PatientSocialAccountAdapter().pre_social_login(request, login)
-            self.assertTrue(has_verified_email(existing_user, existing_user.email))
+            with self.assertRaises(ImmediateHttpResponse) as raised:
+                PatientSocialAccountAdapter().pre_social_login(request, login)
+            self.assertEqual(raised.exception.response.status_code, 403)
+            self.assertEqual(existing_user.role, expected_role)
+            self.assertEqual(has_verified_email(existing_user, existing_user.email), email_was_verified)
             self.assertTrue(existing_user.has_usable_password())
+            self.assertFalse(SocialAccount.objects.filter(user=existing_user, provider="google").exists())
+
+    def test_staff_cannot_connect_google_to_an_account(self):
+        doctor = User.objects.create_user(
+            username="connect-google-doctor", email="connect-google-doctor@example.test",
+            password="Secure-Test-Password-984!", role=User.Role.DOCTOR,
+        )
+        request = RequestFactory().get("/")
+        request.user = doctor
+        login = SocialLogin(
+            user=User(username="temporary-google-user"),
+            account=SocialAccount(provider="google", uid="new-google-uid"),
+        )
+        with self.assertRaises(ImmediateHttpResponse) as raised:
+            PatientSocialAccountAdapter().pre_social_login(request, login)
+        self.assertEqual(raised.exception.response.status_code, 403)
+        self.assertFalse(SocialAccount.objects.filter(user=doctor, provider="google").exists())
 
     def test_unverified_google_email_cannot_authenticate_existing_staff(self):
         doctor = User.objects.create_user(
@@ -389,6 +411,27 @@ class AllauthTests(TestCase):
             "last_name": "Patient",
         })
         self.assertEqual(user.role, User.Role.PATIENT)
+
+    def test_google_signin_allows_existing_patient_accounts(self):
+        patient = User.objects.create_user(
+            username="google-patient", email="google-patient@example.test",
+            password="Secure-Test-Password-984!", role=User.Role.PATIENT,
+        )
+        request = RequestFactory().get("/")
+        provider = GoogleProvider(
+            request,
+            SocialApp(provider="google", name="Google", client_id="test-id", secret="test-secret"),
+        )
+        login = SocialLogin(
+            user=User(username="temporary-google-patient"),
+            account=SocialAccount(provider="google", uid="google-patient-uid"),
+            provider=provider,
+            email_addresses=[EmailAddress(email=patient.email, verified=True)],
+        )
+        login.lookup()
+        self.assertEqual(login.user.pk, patient.pk)
+        PatientSocialAccountAdapter().pre_social_login(request, login)
+        self.assertTrue(has_verified_email(patient, patient.email))
 
 
 class ChatConsumerPermissionTests(TransactionTestCase):
