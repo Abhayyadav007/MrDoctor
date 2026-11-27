@@ -97,7 +97,7 @@ Start the ASGI server (WebSockets are supported):
 daphne -b 127.0.0.1 -p 8000 config.asgi:application
 ```
 
-Open <http://127.0.0.1:8000/>. Django's `python manage.py runserver` is also available for local development. Admin tools are at `/admin/`. Patient email sign-up requires verification; verification and password-reset links are printed to the terminal because the project uses Django's console email backend.
+Open <http://127.0.0.1:8000/>. Django's `python manage.py runserver` is also available for local development. Admin tools are at `/admin/`. Patient email sign-up requires verification. The verification page is shown in the app; configure SMTP below to deliver the confirmation link to the patient's inbox. Without SMTP, Django prints the email to the server terminal.
 
 ### Email and Google sign-in
 
@@ -106,6 +106,19 @@ Patient registration, email verification, and password reset use django-allauth.
 ```text
 http://127.0.0.1:8000/accounts/google/login/callback/
 ```
+
+For verification and password-reset messages to arrive in a Gmail inbox instead of being printed in the terminal, enable 2-Step Verification on the sending Gmail account and create a Google **App Password**. In the ignored local `.env` file, set:
+
+```dotenv
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-sending-address@gmail.com
+EMAIL_HOST_PASSWORD=your-16-character-app-password
+DEFAULT_FROM_EMAIL=your-sending-address@gmail.com
+```
+
+Use the App Password, not your Gmail password or Google OAuth client secret. Keep it only in `.env`, restart Daphne, and try signing up again. The app will show the “Check your inbox” page and send the verification link to the address entered during signup. Without SMTP settings, email delivery remains in the console.
 
 For another local host or HTTPS tunnel, add the matching callback URI to the OAuth client and use that hostname in `ALLOWED_HOSTS`. Google may require configuring the OAuth consent screen and adding test users while the consent screen is in testing mode. Do not commit OAuth secrets. Without Google credentials, email registration/sign-in still works and the Google button is hidden.
 

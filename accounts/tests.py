@@ -138,6 +138,12 @@ class AllauthTests(TestCase):
         self.assertEqual(self.client.get(reverse("account_login")).status_code, 200)
         self.assertEqual(self.client.get(reverse("account_signup")).status_code, 200)
 
+    def test_verification_sent_page_uses_the_patient_app_layout(self):
+        response = self.client.get(reverse("account_email_verification_sent"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Check your inbox")
+        self.assertContains(response, "follow the link to confirm your email address")
+
     @override_settings(SOCIALACCOUNT_PROVIDERS={
         "google": {"APPS": [{"client_id": "test-client-id", "secret": "test-secret", "key": ""}]}
     })
