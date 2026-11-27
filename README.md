@@ -39,6 +39,19 @@ docker compose exec web python manage.py seed_demo
 
 The demo admin is a regular admin account; the configured superadmin creates additional admins from the **Add admin** navigation link. Start/stop the containers with `docker compose up` and `docker compose down`; persisted database and uploaded files are held in named Docker volumes. To remove local database data as well, use `docker compose down -v`.
 
+## Deploy a free demo on Render
+
+The repository includes `render.yaml` for a Render Blueprint. It creates a free Docker web service and a free Render Postgres database in Singapore, connects them over Render's internal network, collects static files during the image build, and runs migrations before Daphne starts.
+
+1. Push this repository to GitHub.
+2. In Render, choose **New → Blueprint**, connect `Abhayyadav007/MrDoctor`, select the `main` branch, and apply the Blueprint from `render.yaml`.
+3. Wait for the database and web service to finish deploying. Check the web service logs for successful migrations and Daphne listening on Render's port.
+4. Create the first superadmin with `python manage.py create_superadmin`. Run it in the Render Shell if available. Otherwise, temporarily use the database's **External Database URL** as `DATABASE_URL` in your local, ignored `.env` file and run `.venv/bin/python manage.py create_superadmin` locally; if needed, allowlist your current IP for external database access, then remove the URL and external access afterward. Keep the external URL private. Do not run `seed_demo` unless you want demo accounts and cases.
+5. If using Google sign-in, add `https://<your-service>.onrender.com/accounts/google/login/callback/` to the Google OAuth client's authorized redirect URIs, then add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the Render service's environment settings.
+6. To send patient verification and password-reset emails, configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL` in Render. Without SMTP settings, Django uses the console email backend.
+
+The Blueprint uses Render's **free** plans for a demo. Free Render Postgres expires 30 days after creation, and a free web service can spin down after inactivity. The web service filesystem is ephemeral, so uploaded reports and profile photos can be lost on restart or deploy; configure external object storage or a persistent disk before relying on uploads. Chat uses the in-memory channel layer and is limited to one process; switch to a Redis-backed Channels layer before scaling to multiple instances. Do not use real patient information; this project is not certified for clinical use.
+
 ## Local Python setup
 
 You can run Django directly on your computer while using your own PostgreSQL installation or Docker-managed PostgreSQL. For a local Homebrew PostgreSQL:

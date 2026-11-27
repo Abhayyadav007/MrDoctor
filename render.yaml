@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: patient-case-tracker
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /accounts/login/
+    autoDeployTrigger: commit
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: patient-case-tracker-db
+          property: connectionString
+      - key: SUPERADMIN_EMAIL
+        value: abhaykumar@example.test
+      - key: SUPERADMIN_USERNAME
+        value: "12303289"
+
+databases:
+  - name: patient-case-tracker-db
+    databaseName: patient_case_tracker
+    user: patient_case_tracker
+    plan: free
+    region: singapore

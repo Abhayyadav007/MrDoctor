@@ -11,7 +11,8 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 RUN mkdir -p /app/media
+RUN python manage.py collectstatic --noinput
 
-EXPOSE 8000
+EXPOSE 10000
 
-CMD ["sh", "-c", "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"]
+CMD ["sh", "-c", "python manage.py migrate && daphne -b 0.0.0.0 -p ${PORT:-10000} config.asgi:application"]
