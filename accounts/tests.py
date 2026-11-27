@@ -156,7 +156,6 @@ class AllauthTests(TestCase):
     def test_login_requires_the_selected_account_role_to_match(self):
         user = User.objects.create_user(username="role-doctor", email="role-doctor@example.test",
                                         password="Strong-Test-Password-984!", role=User.Role.DOCTOR)
-        EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
         correct_role = self.client.post(reverse("account_login"), {
             "login": user.username, "password": "Strong-Test-Password-984!", "role": User.Role.DOCTOR,
         })
@@ -167,6 +166,55 @@ class AllauthTests(TestCase):
         })
         self.assertEqual(wrong_role.status_code, 200)
         self.assertFalse(self.client.session.get("_auth_user_id"))
+
+    def test_manager_created_staff_emails_are_verified_without_patient_verification(self):
+        doctor = User.objects.create_user(
+            username="verified-doctor",
+            email="verified-doctor@example.test",
+            password="Secure-Test-Password-984!",
+            role=User.Role.DOCTOR,
+        )
+        admin = User.objects.create_user(
+            username="verified-admin",
+            email="verified-admin@example.test",
+            password="Secure-Test-Password-984!",
+            role=User.Role.ADMIN,
+        )
+        patient = User.objects.create_user(
+            username="unverified-patient",
+            email="unverified-patient@example.test",
+            password="Secure-Test-Password-984!",
+            role=User.Role.PATIENT,
+        )
+
+        for staff_user in (doctor, admin):
+            self.assertTrue(EmailAddress.objects.get(user=staff_user, email=staff_user.email).verified)
+        self.assertFalse(EmailAddress.objects.filter(user=patient, verified=True).exists())
+
+    def test_superadmin_staff_list_shows_doctor_and_admin_usernames(self):
+        doctor = User.objects.create_user(
+            username="listed-doctor",
+            email="listed-doctor@example.test",
+            password="Secure-Test-Password-984!",
+            role=User.Role.DOCTOR,
+        )
+        admin = User.objects.create_user(
+            username="listed-admin",
+            email="listed-admin@example.test",
+            password="Secure-Test-Password-984!",
+            role=User.Role.ADMIN,
+        )
+        superadmin = User.objects.create_superuser(
+            username=settings.SUPERADMIN_USERNAME,
+            email=settings.SUPERADMIN_EMAIL,
+            password="Secure-Test-Password-984!",
+        )
+        self.client.force_login(superadmin)
+
+        response = self.client.get(reverse("workplace_dashboard"))
+
+        self.assertContains(response, f"Username: <code>{doctor.username}</code>")
+        self.assertContains(response, f"Username: <code>{admin.username}</code>")
 
     def test_staff_use_usernames_and_patients_use_emails_for_password_login(self):
         doctor = User.objects.create_user(
@@ -327,7 +375,7 @@ class AllauthTests(TestCase):
         self.assertIsNone(login._did_authenticate_by_email)
         self.assertNotEqual(login.user.pk, doctor.pk)
         PatientSocialAccountAdapter().pre_social_login(RequestFactory().get("/"), login)
-        self.assertFalse(EmailAddress.objects.filter(user=doctor, email=doctor.email, verified=True).exists())
+        self.assertFalse(SocialAccount.objects.filter(user=doctor, provider="google").exists())
 
     def test_google_signup_without_a_precreated_account_remains_a_patient(self):
         request = RequestFactory().get("/")

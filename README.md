@@ -76,7 +76,7 @@ python manage.py seed_demo
 
 Demo credentials are `demo-admin / DemoAdmin123!`, `demo-doctor1` or `demo-doctor2 / DemoDoctor123!`, and `demo-patient1` through `demo-patient3 / DemoPatient123!`. Change these passwords before sharing the application.
 
-`python manage.py create_superadmin` prompts for a password and uses the configured email and username in `.env`. Additional admin accounts can only be created by that superadmin from the **Add admin** page. Sign-in requires choosing the matching role (Patient, Doctor, or Admin). Patients use email and password; doctors and admins use the unique username and password chosen by their manager. The superadmin signs in with username `12303289` by default. Google sign-in remains available for staff with a matching verified email.
+`python manage.py create_superadmin` prompts for a password and uses the configured email and username in `.env`. Additional admin accounts can only be created by that superadmin from the **Add admin** page. Sign-in requires choosing the matching role (Patient, Doctor, or Admin). Patients use email and password; doctors and admins use the unique username and password chosen by their manager. Manager-created staff accounts are marked email-verified automatically, so no verification email is required for them. The superadmin signs in with username `12303289` by default.
 
 Start the ASGI server (WebSockets are supported):
 
@@ -84,11 +84,11 @@ Start the ASGI server (WebSockets are supported):
 daphne -b 127.0.0.1 -p 8000 config.asgi:application
 ```
 
-Open <http://127.0.0.1:8000/>. Django's `python manage.py runserver` is also available for local development. Admin tools are at `/admin/`. Email sign-up requires verification; verification and password-reset links are printed to the terminal because the project uses Django's console email backend.
+Open <http://127.0.0.1:8000/>. Django's `python manage.py runserver` is also available for local development. Admin tools are at `/admin/`. Patient email sign-up requires verification; verification and password-reset links are printed to the terminal because the project uses Django's console email backend.
 
 ### Email and Google sign-in
 
-Email/password sign-in, email verification, password reset, and account registration use django-allauth. Google sign-in/sign-up is enabled when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in `.env`. To configure it, create a free OAuth 2.0 Web application client in Google Cloud Console, add this authorized redirect URI, and copy its credentials to `.env`:
+Patient registration, email verification, and password reset use django-allauth. Manager-created doctors and admins can sign in immediately using their assigned usernames and passwords. Google sign-in/sign-up is enabled when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in `.env`. To configure it, create a free OAuth 2.0 Web application client in Google Cloud Console, add this authorized redirect URI, and copy its credentials to `.env`:
 
 ```text
 http://127.0.0.1:8000/accounts/google/login/callback/
@@ -100,7 +100,7 @@ Admins should enter each doctor's real Google-account email when creating the do
 
 ## Implementation and basic checks
 
-1. **Setup and authentication:** email-based registration/login, email verification, password change/reset, optional Google sign-in/sign-up, custom roles, doctor account creation from the admin dashboard, and Django admin. Check email verification and reset flow; links appear in the server console.
+1. **Setup and authentication:** patient email registration/login and verification, username/password login for manager-created staff, password change/reset, optional Google sign-in/sign-up, custom roles, doctor account creation from the admin dashboard, and Django admin. Check patient email verification and password-reset flow; links appear in the server console.
 2. **Records and scheduling:** create cases, assign doctors, upload attachments, record visits/prescriptions, request and decide appointments, browse patient history, audit case changes, and export a PDF. Use the seeded accounts to try patient and doctor workflows.
 3. **Chat and calls:** open Messages for an assigned case. Chat history is persisted; the case WebSocket is restricted to that case's patient and assigned doctor. Start an audio or video call using the call buttons.
 4. **Dashboards and polish:** role-specific dashboards, case/priority filtering, patient and case search/pagination, notifications, and admin charts are included.

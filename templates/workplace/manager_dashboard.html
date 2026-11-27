@@ -14,6 +14,7 @@
         <div class="list-row">
           <div class="case-symbol"><i class="bi {% if employee.role == 'DOCTOR' %}bi-heart-pulse{% else %}bi-person-badge{% endif %}"></i></div>
           <div class="row-main"><strong>{{ employee.get_full_name|default:employee.username }}</strong>
+            <div class="small text-secondary">Username: <code>{{ employee.username }}</code></div>
             <div class="small text-secondary">{{ employee.get_role_display }}{% if employee.email %} · {{ employee.email }}{% endif %}</div>
             <div class="small text-secondary">{{ employee.remark_count }} remark{{ employee.remark_count|pluralize }}</div>
           </div>
